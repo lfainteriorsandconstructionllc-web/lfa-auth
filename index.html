@@ -24,6 +24,7 @@
     <h1>☁️ LFA Real Estate Pro Cloud</h1>
     <p id="status-txt">Verificando tu enlace seguro de acceso...</p>
     <a id="open-app-btn" class="btn" style="display:none;" href="#">Abrir LFA Real Estate Pro y Entrar</a>
+    <button class="btn-sec" id="copy-desktop-btn" type="button" style="display:none; margin-bottom:10px;">📋 Copiar Sesión para Mac / Windows</button>
     <div id="pwd-box" class="box" style="display:none;">
       <label>Asignar o Cambiar tu Contraseña de Acceso (mín. 6 caracteres)</label>
       <input type="password" id="new-pwd" placeholder="Escribe tu nueva contraseña..." minlength="6" />
@@ -45,11 +46,19 @@
 
       if (token) {
         const deepLink = "lfarealestate://login-callback#" + raw;
+        const copyBtn = document.getElementById("copy-desktop-btn");
         openBtn.href = deepLink;
         openBtn.style.display = "block";
+        copyBtn.style.display = "block";
         pwdBox.style.display = "block";
-        statusEl.textContent = "¡Cuenta verificada! Pulsa el botón dorado para entrar directo a la aplicación o guarda aquí tu contraseña:";
+        statusEl.textContent = "¡Sesión verificada! Pulsa el botón dorado para entrar directo a la app móvil o copia la sesión para escritorio:";
         setTimeout(function() { window.location.href = deepLink; }, 350);
+
+        copyBtn.onclick = function() {
+          navigator.clipboard.writeText(deepLink).then(function() {
+            copyBtn.textContent = "✓ Sesión copiada — Pégala en la app de Escritorio";
+          });
+        };
 
         document.getElementById("save-pwd-btn").onclick = async function() {
           const pw = document.getElementById("new-pwd").value;
