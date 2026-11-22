@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso LFA Cloud — LFA Real Estate Pro</title>
+  <style>
+    :root { --bg:#0B1222; --card:#121C31; --gold:#B89858; --gold-lt:#E5CA87; --txt:#F8FAFC; --muted:#94A3B8; --ok:#22C55E; --err:#EF4444; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--txt); display:flex; align-items:center; justify-content:center; min-height:100vh; padding:18px; }
+    .card { width:100%; max-width:440px; background:var(--card); border:1.5px solid rgba(216,190,130,0.45); border-radius:18px; padding:24px 20px; text-align:center; box-shadow:0 18px 40px rgba(0,0,0,0.5); }
+    h1 { margin:0 0 6px; font-size:19px; color:var(--gold-lt); letter-spacing:0.3px; }
+    p { margin:0 0 16px; font-size:13.5px; color:var(--muted); line-height:1.5; }
+    .btn { display:block; width:100%; padding:13px 16px; border-radius:12px; border:1px solid var(--gold-lt); background:linear-gradient(180deg,#EBDEB3 0%,#D4B87A 38%,#B89858 75%,#896E46 100%); color:#0F172A; font-weight:800; font-size:14px; text-decoration:none; cursor:pointer; margin-bottom:14px; }
+    .box { text-align:left; background:#0F172A; border:1px solid rgba(184,152,88,0.3); border-radius:12px; padding:14px; margin-top:10px; }
+    label { display:block; font-size:11.5px; font-weight:700; color:var(--gold-lt); margin-bottom:6px; }
+    input { width:100%; padding:10px 12px; border-radius:9px; border:1px solid rgba(184,152,88,0.4); background:#16223B; color:#fff; font-size:14px; margin-bottom:10px; }
+    .btn-sec { width:100%; padding:10px; border-radius:9px; border:1.2px solid var(--gold); background:transparent; color:var(--gold-lt); font-weight:700; font-size:13px; cursor:pointer; }
+    .msg { font-size:12.5px; font-weight:600; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>☁️ LFA Real Estate Pro Cloud</h1>
+    <p id="status-txt">Verificando tu enlace seguro de acceso...</p>
+    <a id="open-app-btn" class="btn" style="display:none;" href="#">Abrir LFA Real Estate Pro y Entrar</a>
+    <div id="pwd-box" class="box" style="display:none;">
+      <label>Asignar o Cambiar tu Contraseña de Acceso (mín. 6 caracteres)</label>
+      <input type="password" id="new-pwd" placeholder="Escribe tu nueva contraseña..." minlength="6" />
+      <button class="btn-sec" id="save-pwd-btn" type="button">Guardar Contraseña Definitiva</button>
+      <div id="pwd-msg" class="msg"></div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const SB_URL = "https://ucdnresfmewdxfjhtdjh.supabase.co";
+      const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjZG5yZXNmbWV3ZHhmamh0ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNzcwMzYsImV4cCI6MjExMDk1MzAzNn0.C877zPHANhry7V5WrGu_fUTAyYu5mz8AEqf8lwxZ1ps";
+      const raw = window.location.hash ? window.location.hash.substring(1) : window.location.search.substring(1);
+      const params = new URLSearchParams(raw);
+      const token = params.get("access_token");
+      const errDesc = params.get("error_description");
+      const statusEl = document.getElementById("status-txt");
+      const openBtn = document.getElementById("open-app-btn");
+      const pwdBox = document.getElementById("pwd-box");
+
+      if (token) {
+        const deepLink = "lfarealestate://login-callback#" + raw;
+        openBtn.href = deepLink;
+        openBtn.style.display = "block";
+        pwdBox.style.display = "block";
+        statusEl.textContent = "¡Cuenta verificada! Pulsa el botón dorado para entrar directo a la aplicación o guarda aquí tu contraseña:";
+        setTimeout(function() { window.location.href = deepLink; }, 350);
+
+        document.getElementById("save-pwd-btn").onclick = async function() {
+          const pw = document.getElementById("new-pwd").value;
+          const m = document.getElementById("pwd-msg");
+          if (!pw || pw.length < 6) { m.style.color = "#EF4444"; m.textContent = "Ingresa al menos 6 caracteres."; return; }
+          m.style.color = "#E5CA87"; m.textContent = "Guardando contraseña...";
+          try {
+            const res = await fetch(SB_URL + "/auth/v1/user", {
+              method: "PUT",
+              headers: { "apikey": SB_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+              body: JSON.stringify({ password: pw })
+            });
+            if (res.ok) {
+              m.style.color = "#22C55E";
+              m.textContent = "✓ Contraseña guardada con éxito. Ya puedes entrar siempre con tu correo y clave.";
+            } else {
+              const j = await res.json().catch(() => ({}));
+              m.style.color = "#EF4444";
+              m.textContent = j.msg || j.message || "No se pudo actualizar (solicita un enlace nuevo).";
+            }
+          } catch (e) {
+            m.style.color = "#EF4444"; m.textContent = "Error de red: " + e;
+          }
+        };
+      } else if (errDesc) {
+        statusEl.textContent = "Este enlace ya expiró o ya fue utilizado (" + errDesc + "). Solicita uno nuevo desde la pestaña 'Enlace Correo' en la app.";
+      } else {
+        statusEl.textContent = "Portal seguro de autenticación LFA Cloud activo.";
+      }
+    })();
+  </script>
+</body>
+</html>
