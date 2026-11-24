@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acceso LFA Cloud — LFA Real Estate Pro</title>
+  <title>Acceso LFA Cloud</title>
   <style>
     :root { --bg:#0B1222; --card:#121C31; --gold:#B89858; --gold-lt:#E5CA87; --txt:#F8FAFC; --muted:#94A3B8; --ok:#22C55E; --err:#EF4444; }
     * { box-sizing:border-box; }
@@ -21,9 +21,9 @@
 </head>
 <body>
   <div class="card">
-    <h1>☁️ LFA Real Estate Pro Cloud</h1>
-    <p id="status-txt">Verificando tu enlace seguro de acceso...</p>
-    <a id="open-app-btn" class="btn" style="display:none;" href="#">Abrir LFA Real Estate Pro y Entrar</a>
+    <h1 id="brand-title">☁️ LFA Cloud</h1>
+    <p id="status-txt">Conectando de forma segura con tu cuenta...</p>
+    <a id="open-app-btn" class="btn" style="display:none;" href="#">Abrir Aplicación y Entrar</a>
     <button class="btn-sec" id="copy-desktop-btn" type="button" style="display:none; margin-bottom:10px;">📋 Copiar Sesión para Mac / Windows</button>
     <div id="pwd-box" class="box" style="display:none;">
       <label>Asignar o Cambiar tu Contraseña de Acceso (mín. 6 caracteres)</label>
@@ -36,23 +36,56 @@
     (function() {
       const SB_URL = "https://ucdnresfmewdxfjhtdjh.supabase.co";
       const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjZG5yZXNmbWV3ZHhmamh0ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNzcwMzYsImV4cCI6MjExMDk1MzAzNn0.C877zPHANhry7V5WrGu_fUTAyYu5mz8AEqf8lwxZ1ps";
-      const raw = window.location.hash ? window.location.hash.substring(1) : window.location.search.substring(1);
-      const params = new URLSearchParams(raw);
-      const token = params.get("access_token");
-      const errDesc = params.get("error_description");
+      const searchParams = new URLSearchParams(window.location.search);
+
+      // 1-Tap Google OAuth launcher preserving target LFA app across Supabase redirect
+      if (searchParams.get("start") === "google") {
+        const reqApp = searchParams.get("app") || "realestate";
+        try { localStorage.setItem("lfa_pending_app", reqApp); } catch (_) {}
+        document.cookie = "lfa_pending_app=" + encodeURIComponent(reqApp) + "; path=/; max-age=600; SameSite=Lax";
+        const redir = encodeURIComponent("https://lfainteriorsandconstructionllc-web.github.io/lfa-auth/");
+        window.location.replace(SB_URL + "/auth/v1/authorize?provider=google&redirect_to=" + redir + "&prompt=select_account");
+        return;
+      }
+
+      function readCookieApp() {
+        const m = document.cookie.match(/(?:^|;\s*)lfa_pending_app=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+
+      let storedApp = "";
+      try {
+        storedApp = localStorage.getItem("lfa_pending_app") || "";
+        localStorage.removeItem("lfa_pending_app");
+      } catch (_) {}
+      if (!storedApp) storedApp = readCookieApp();
+      document.cookie = "lfa_pending_app=; path=/; max-age=0";
+
+      const targetApp = searchParams.get("app") || storedApp || "realestate";
+      const isStudio = (targetApp === "studio");
+
+      const titleEl = document.getElementById("brand-title");
       const statusEl = document.getElementById("status-txt");
       const openBtn = document.getElementById("open-app-btn");
       const pwdBox = document.getElementById("pwd-box");
 
+      titleEl.textContent = isStudio ? "☁️ LFA Studio Academy Cloud" : "☁️ LFA Real Estate Pro Cloud";
+      openBtn.textContent = isStudio ? "Abrir LFA Studio Academy y Entrar" : "Abrir LFA Real Estate Pro y Entrar";
+
+      const raw = window.location.hash ? window.location.hash.substring(1) : window.location.search.substring(1);
+      const params = new URLSearchParams(raw);
+      const token = params.get("access_token");
+      const errDesc = params.get("error_description");
+
       if (token) {
-        const deepLink = "lfarealestate://login-callback#" + raw;
+        const deepLink = (isStudio ? "lfastudio://auth-callback#" : "lfarealestate://login-callback#") + raw;
         const copyBtn = document.getElementById("copy-desktop-btn");
         openBtn.href = deepLink;
         openBtn.style.display = "block";
         copyBtn.style.display = "block";
         pwdBox.style.display = "block";
-        statusEl.textContent = "¡Sesión verificada! Pulsa el botón dorado para entrar directo a la app móvil o copia la sesión para escritorio:";
-        setTimeout(function() { window.location.href = deepLink; }, 350);
+        statusEl.textContent = "¡Sesión verificada! Entrando automáticamente a tu aplicación LFA...";
+        setTimeout(function() { window.location.href = deepLink; }, 250);
 
         copyBtn.onclick = function() {
           navigator.clipboard.writeText(deepLink).then(function() {
@@ -77,14 +110,14 @@
             } else {
               const j = await res.json().catch(() => ({}));
               m.style.color = "#EF4444";
-              m.textContent = j.msg || j.message || "No se pudo actualizar (solicita un enlace nuevo).";
+              m.textContent = j.msg || j.message || "No se pudo actualizar.";
             }
           } catch (e) {
             m.style.color = "#EF4444"; m.textContent = "Error de red: " + e;
           }
         };
       } else if (errDesc) {
-        statusEl.textContent = "Este enlace ya expiró o ya fue utilizado (" + errDesc + "). Solicita uno nuevo desde la pestaña 'Enlace Correo' en la app.";
+        statusEl.textContent = "La sesión expiró (" + errDesc + "). Vuelve a intentarlo desde la app.";
       } else {
         statusEl.textContent = "Portal seguro de autenticación LFA Cloud activo.";
       }
